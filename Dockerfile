@@ -35,4 +35,4 @@ USER appuser
 EXPOSE 3000
 
 # Command to run the app
-CMD ["node", "dist/main"]
+CMD ["node", "dist/main.js"]

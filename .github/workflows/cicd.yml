@@ -61,6 +61,7 @@ jobs:
             # Run the new container with environment variables
             docker run -d --name nestjs-app -p 3000:3000 --restart unless-stopped \
               -e DB_HOST=${{ secrets.DB_HOST }} \
+              -e DB_PORT=${{ secrets.PORT }} \
               -e DB_NAME=${{ secrets.DB_NAME }} \
               -e DB_PASSWORD=${{ secrets.DB_PASSWORD }} \
               -e DB_PORT=${{ secrets.DB_PORT }} \

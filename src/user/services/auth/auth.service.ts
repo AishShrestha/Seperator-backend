@@ -8,6 +8,7 @@ import { CreateUserDto } from '../../dto/create-user.dto';
 import { UserService } from '../user/user.service';
 import { LoginDto } from '../../dto/login.dto';
 import { UserEntity } from '../../entities/user.entity';
+import { UnauthorizedError } from 'src/errors/custom-error';
 
 @Injectable()
 export class AuthService {
@@ -41,9 +42,11 @@ export class AuthService {
 
       return token;
     }
+    // throw new UnauthorizedException('Invalid or expired token');
+    throw new UnauthorizedError(`user with id ${user.id} is not authorized`);
 
     // Password doesn't match
-    return this.failLogin('Incorrect password');
+    // return this.failLogin('Incorrect password');
   }
 
   private failLogin(message = 'Login failed') {

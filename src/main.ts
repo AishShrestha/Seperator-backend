@@ -64,12 +64,7 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle('NestJs Swagger')
-    .setDescription(
-      `<a target="_blank" href="https://github.com/BlueNeonTech/nestjs-starter-kit">
-        Starter Kit from BlueNeon Tech by Rochak
-      </a>`,
-    )
+    .setTitle('Seperator Api List')
     .addBearerAuth()
     .build();
 

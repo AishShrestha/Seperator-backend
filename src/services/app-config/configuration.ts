@@ -11,7 +11,9 @@ export const getConfig = (): AppConfig => {
     port: parseInt(process.env.PORT as string, 10) || 3000,
     appEnv: appEnv as AppEnv,
     jwtSecret: process.env.JWT_SECRET as string,
+    jwtRefreshSecret: process.env.JWT_REFRESH_SECRET as string,
     logLevel: process.env.LOG_LEVEL || 'info',
+    frontendUrl: process.env.FRONTEND_URL as string,
     database: {
       host: process.env.DB_HOST as string,
       port: parseInt(process.env.DB_PORT as string, 10) || 5432,

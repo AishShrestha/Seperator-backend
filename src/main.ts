@@ -34,12 +34,12 @@ async function bootstrap() {
         },
       },
       crossOriginEmbedderPolicy: false,
-      // crossOriginResourcePolicy: { policy: 'cross-origin' }, // ✅ CORP fix
+      crossOriginResourcePolicy: { policy: 'cross-origin' }, // ✅ CORP fix
     }),
   );
 
   app.enableCors({
-    origin: configService.get<string>('frontendUrl') || '*',
+    origin: configService.get<string>('frontendUrl'),
     credentials: true,
   });
 

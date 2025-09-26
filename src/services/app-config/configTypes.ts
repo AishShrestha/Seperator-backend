@@ -2,10 +2,12 @@ export interface AppConfig {
   port: number;
   appEnv: AppEnv;
   jwtSecret: string;
+  jwtRefreshSecret: string;
   logLevel: string;
   database: DbConfig;
   cache: CacheConfig;
   mail: MailConfig;
+  frontendUrl: string;
 }
 
 export enum AppEnv {

@@ -20,6 +20,7 @@ export class UserService {
       where: {
         email: email.toLowerCase(),
       },
+      select: ['id', 'name', 'email', 'password'],
     });
   }
 
@@ -56,6 +57,7 @@ export class UserService {
       email: user.email.toLowerCase(),
       name: user.name,
     };
+    console.log('payload', payload)
 
     const accessToken = this.jwtService.signAccessToken(payload);
     const refreshToken = this.jwtService.signRefreshToken({ id: user.id });

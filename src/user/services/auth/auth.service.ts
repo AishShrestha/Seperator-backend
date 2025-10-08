@@ -56,13 +56,16 @@ export class AuthService {
       throw new NotFoundException('User does not exist');
     }
 
+
     // Check password match
     const isPasswordValid = await this.userService.checkUserPassword(user, password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
+   
 
     const tokens = await this.userService.generateTokensForUser(user);
+
 
     return {
       user: {

@@ -63,6 +63,7 @@ export class UserController {
     @Res({ passthrough: true }) res: Response
   ) {
     const result = await this.authService.login(login);
+    console.log("Login result:", result);
 
     // Set both access and refresh tokens as HttpOnly cookies
     res.cookie('access_token', result.accessToken, {

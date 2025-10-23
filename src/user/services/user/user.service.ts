@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { UserEntity } from '../../entity/user.entity';
+import { User } from '../../entity/user.entity';
 import { Repository } from 'typeorm';
 import { CreateUserDto } from '../../dto/create-user.dto';
 import { PasswordService } from '../password/password.service';
@@ -9,13 +9,13 @@ import { JwtService } from '../jwt/jwt.service';
 @Injectable()
 export class UserService {
   constructor(
-    @InjectRepository(UserEntity)
-    private usersRepository: Repository<UserEntity>,
+    @InjectRepository(User)
+    private usersRepository: Repository<User>,
     private readonly passwordService: PasswordService,
     private readonly jwtService: JwtService,
   ) {}
 
-  async isUserExists(email: string): Promise<UserEntity | null> {
+  async isUserExists(email: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: {
         email: email.toLowerCase(),
@@ -24,14 +24,16 @@ export class UserService {
     });
   }
 
-  async findByIdWithRefreshToken(id: string): Promise<UserEntity | null> {
+  async findByIdWithRefreshToken(id: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { id },
       select: ['id', 'name', 'email', 'refreshToken', 'refreshTokenExpiresAt'],
     });
   }
 
-  async createUser(userDto: CreateUserDto): Promise<{user: UserEntity, accessToken: string, refreshToken: string}> {
+  async createUser(
+    userDto: CreateUserDto,
+  ): Promise<{ user: User; accessToken: string; refreshToken: string }> {
     const userPayload = {
       email: userDto.email.toLowerCase(),
       name: userDto.name,
@@ -40,9 +42,9 @@ export class UserService {
 
     const newUser = this.usersRepository.create(userPayload);
     const savedUser = await this.usersRepository.save(newUser);
-    
+
     const tokens = await this.generateTokensForUser(savedUser);
-    
+
     return {
       user: savedUser,
       accessToken: tokens.accessToken,
@@ -50,21 +52,20 @@ export class UserService {
     };
   }
 
-  async generateTokensForUser(user: UserEntity): Promise<{accessToken: string, refreshToken: string}> {
-
+  async generateTokensForUser(user: User): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
       id: user.id,
       email: user.email.toLowerCase(),
       name: user.name,
     };
-    console.log('payload', payload)
+    console.log('payload', payload);
 
     const accessToken = this.jwtService.signAccessToken(payload);
     const refreshToken = this.jwtService.signRefreshToken({ id: user.id });
-    
+
     // Store refresh token in database
     await this.storeRefreshToken(user.id, refreshToken);
-    
+
     return { accessToken, refreshToken };
   }
 
@@ -87,7 +88,7 @@ export class UserService {
 
   async validateRefreshToken(userId: string, refreshToken: string): Promise<boolean> {
     const user = await this.findByIdWithRefreshToken(userId);
-    
+
     if (!user || !user.refreshToken || !user.refreshTokenExpiresAt) {
       return false;
     }
@@ -96,18 +97,15 @@ export class UserService {
     return user.refreshToken === refreshToken && new Date() < user.refreshTokenExpiresAt;
   }
 
-  async updateUser(newUser: UserEntity): Promise<UserEntity> {
+  async updateUser(newUser: User): Promise<User> {
     return await this.usersRepository.save(newUser);
   }
 
-  async checkUserPassword(
-    user: UserEntity,
-    requestPassword: string,
-  ): Promise<boolean> {
+  async checkUserPassword(user: User, requestPassword: string): Promise<boolean> {
     return this.passwordService.compare(requestPassword, user.password);
   }
 
-  public getUserToken(user: UserEntity): string {
+  public getUserToken(user: User): string {
     return this.jwtService.signAccessToken({
       id: user.id,
       email: user.email.toLowerCase(),
@@ -115,12 +113,12 @@ export class UserService {
     });
   }
 
-  public getAll(): Promise<UserEntity[]> {
+  public getAll(): Promise<User[]> {
     return this.usersRepository.find({
       select: ['id', 'email', 'name'],
     });
   }
-  async findById(id: string): Promise<UserEntity | null> {
+  async findById(id: string): Promise<User | null> {
     return this.usersRepository.findOne({ where: { id } });
   }
 }

@@ -8,7 +8,7 @@ import {
 import { CreateUserDto } from '../../dto/create-user.dto';
 import { UserService } from '../user/user.service';
 import { LoginDto } from '../../dto/login.dto';
-import { UserEntity } from '../../entity/user.entity';
+import { User } from '../../entity/user.entity';
 import { JwtService } from '../jwt/jwt.service';
 
 @Injectable()
@@ -19,7 +19,7 @@ export class AuthService {
   ) {}
 
   async register(userDto: CreateUserDto): Promise<{
-    user: Partial<UserEntity>;
+    user: Partial<User>;
     accessToken: string;
     refreshToken: string;
   }> {
@@ -31,7 +31,7 @@ export class AuthService {
 
     // Create new user
     const result = await this.userService.createUser(userDto);
-    
+
     return {
       user: {
         id: result.user.id,
@@ -44,7 +44,7 @@ export class AuthService {
   }
 
   async login(loginRequest: LoginDto): Promise<{
-    user: Partial<UserEntity>;
+    user: Partial<User>;
     accessToken: string;
     refreshToken: string;
   }> {
@@ -56,16 +56,13 @@ export class AuthService {
       throw new NotFoundException('User does not exist');
     }
 
-
     // Check password match
     const isPasswordValid = await this.userService.checkUserPassword(user, password);
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid credentials');
     }
-   
 
     const tokens = await this.userService.generateTokensForUser(user);
-
 
     return {
       user: {
@@ -99,7 +96,7 @@ export class AuthService {
 
       // Generate new tokens
       const tokens = await this.userService.generateTokensForUser(user);
-      
+
       return tokens;
     } catch (error) {
       throw new UnauthorizedException('Invalid refresh token');

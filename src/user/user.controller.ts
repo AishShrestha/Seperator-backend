@@ -20,7 +20,6 @@ import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { CacheInterceptor } from '@nestjs/cache-manager';
 import { Response, Request } from 'express';
 
-
 @ApiTags('user')
 @Controller('user')
 export class UserController {
@@ -30,10 +29,7 @@ export class UserController {
   ) {}
 
   @Post('register')
-  async register(
-    @Body() user: CreateUserDto,
-    @Res({ passthrough: true }) res: Response
-  ) {
+  async register(@Body() user: CreateUserDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.register(user);
 
     // Set both access and refresh tokens as HttpOnly cookies
@@ -58,12 +54,9 @@ export class UserController {
   }
 
   @Post('login')
-  async login(
-    @Body() login: LoginDto,
-    @Res({ passthrough: true }) res: Response
-  ) {
+  async login(@Body() login: LoginDto, @Res({ passthrough: true }) res: Response) {
     const result = await this.authService.login(login);
-    console.log("Login result:", result);
+    console.log('Login result:', result);
 
     // Set both access and refresh tokens as HttpOnly cookies
     res.cookie('access_token', result.accessToken, {
@@ -81,14 +74,13 @@ export class UserController {
     return {
       message: 'Login successful',
       user: result.user,
+      accessToken: result.accessToken,
+      refreshToken: result.refreshToken,
     };
   }
 
   @Post('refresh')
-  async refresh(
-    @Req() req: Request,
-    @Res({ passthrough: true }) res: Response
-  ) {
+  async refresh(@Req() req: Request, @Res({ passthrough: true }) res: Response) {
     const refreshToken = req.cookies?.refresh_token;
 
     if (!refreshToken) {
@@ -120,10 +112,7 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard)
   @Post('logout')
-  async logout(
-    @Req() req: any,
-    @Res({ passthrough: true }) res: Response
-  ) {
+  async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
     const userId = req.user?.id;
 
     if (userId) {
@@ -157,13 +146,13 @@ export class UserController {
   @Get('me')
   async getCurrentUser(@Req() req: any) {
     const userId = req.user?.id;
-    
+
     if (!userId) {
       throw new UnauthorizedException('User not found');
     }
 
     const user = await this.userService.findById(userId);
-    
+
     if (!user) {
       throw new NotFoundException('User not found');
     }

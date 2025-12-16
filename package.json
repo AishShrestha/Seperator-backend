@@ -49,6 +49,7 @@
     "dotenv": "^16.5.0",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.0",
+    "nanoid": "^5.1.6",
     "nodemailer": "^6.9.7",
     "nodemailer-smtp-transport": "^2.7.4",
     "passport": "^0.7.0",

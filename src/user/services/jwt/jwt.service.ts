@@ -7,11 +7,11 @@ export class JwtService {
   constructor(private readonly configService: ConfigService) {}
 
   signAccessToken(payload: string | Buffer | object): string {
-    console.log("signing access token with payload:", payload);
-    const result =  sign(payload, this.configService.get('jwtSecret') as string, {
-      expiresIn: '15m', // Short-lived access token
+    console.log('signing access token with payload:', payload);
+    const result = sign(payload, this.configService.get('jwtSecret') as string, {
+      expiresIn: '60m', // Short-lived access token
     });
-    console.log("access token:", result);
+    console.log('access token:', result);
     return result;
   }
 
@@ -19,7 +19,7 @@ export class JwtService {
     const result = sign(payload, this.configService.get('jwtRefreshSecret') as string, {
       expiresIn: '7d', // Long-lived refresh token
     });
-    console.log("refresh token:", result);
+    console.log('refresh token:', result);
     return result;
   }
 

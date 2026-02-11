@@ -1,7 +1,7 @@
-import { Entity, PrimaryGeneratedColumn, Column, OneToMany, ManyToMany, JoinTable } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, OneToMany } from 'typeorm';
 import { Expense } from '../../expense/entity/expense.entity';
-import { User } from '../../user/entity/user.entity';
 import { Notification } from '../../notification/entity/notification.entity';
+import { GroupMember } from './group-member.entity';
 
 @Entity('groups')
 export class Group {
@@ -17,9 +17,8 @@ export class Group {
   @OneToMany(() => Expense, (expense) => expense.group)
   expenses: Expense[];
 
-  @ManyToMany(() => User, (user) => user.groups)
-  @JoinTable({ name: 'group_users' })
-  users: User[];
+  @OneToMany(() => GroupMember, (member) => member.group)
+  members: GroupMember[];
 
   @OneToMany(() => Notification, (notification) => notification.group)
   notifications: Notification[];

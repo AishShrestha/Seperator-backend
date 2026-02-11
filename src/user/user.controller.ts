@@ -16,7 +16,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { UserService } from './services/user/user.service';
 import { JwtAuthGuard } from './guards/jwt-auth/jwt-auth.guard';
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import { CacheInterceptor } from '@nestjs/cache-manager';
 import { Response, Request } from 'express';
 
@@ -110,6 +110,7 @@ export class UserController {
   }
 
   @ApiBearerAuth()
+  @ApiCookieAuth('access_token')
   @UseGuards(JwtAuthGuard)
   @Post('logout')
   async logout(@Req() req: any, @Res({ passthrough: true }) res: Response) {
@@ -129,6 +130,7 @@ export class UserController {
   }
 
   @ApiBearerAuth()
+  @ApiCookieAuth('access_token')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(CacheInterceptor)
   @Get()
@@ -142,6 +144,7 @@ export class UserController {
   }
 
   @ApiBearerAuth()
+  @ApiCookieAuth('access_token')
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getCurrentUser(@Req() req: any) {

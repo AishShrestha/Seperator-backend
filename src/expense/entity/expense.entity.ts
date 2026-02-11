@@ -12,6 +12,8 @@ import {
 } from 'typeorm';
 import { ExpensePayment } from './expensePayment.entity';
 import { ExpenseShare } from './expenseShare.entity';
+import { ExpenseCategory } from './expenseCategory.entity';
+import { SplitType } from '../enums/split-type.enum';
 
 @Entity('expenses')
 export class Expense {
@@ -40,6 +42,23 @@ export class Expense {
   @ManyToOne(() => Group, (group) => group.id, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'group_id' })
   group: Group;
+
+  @ManyToOne(() => ExpenseCategory, (category) => category.expenses, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
+  @JoinColumn({ name: 'category_id' })
+  category: ExpenseCategory;
+
+  @Column({ type: 'uuid', nullable: true })
+  category_id: string;
+
+  @Column({
+    type: 'enum',
+    enum: SplitType,
+    default: SplitType.EQUAL,
+  })
+  split_type: SplitType;
 
   @OneToMany(() => ExpensePayment, (payment) => payment.expense)
   payments: ExpensePayment[];

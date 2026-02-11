@@ -1,9 +1,9 @@
-import { Entity, Column, PrimaryGeneratedColumn, OneToMany, ManyToMany } from 'typeorm';
+import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Expense } from '../../expense/entity/expense.entity';
-import { Group } from '../../group/entity/group.entity';
 import { ExpensePayment } from '../../expense/entity/expensePayment.entity';
 import { ExpenseShare } from '../../expense/entity/expenseShare.entity';
 import { Notification } from '../../notification/entity/notification.entity';
+import { GroupMember } from '../../group/entity/group-member.entity';
 
 @Entity({
   name: 'users',
@@ -25,6 +25,12 @@ export class User {
   password: string;
 
   @Column({
+    name: 'avatar',
+    nullable: true,
+  })
+  avatar: string;
+
+  @Column({
     name: 'refresh_token',
     nullable: true,
     select: false,
@@ -42,8 +48,8 @@ export class User {
   @OneToMany(() => Expense, (expense) => expense.created_by_user)
   created_expenses: Expense[];
 
-  @ManyToMany(() => Group, (group) => group.users)
-  groups: Group[];
+  @OneToMany(() => GroupMember, (membership) => membership.user)
+  groupMemberships: GroupMember[];
 
   @OneToMany(() => ExpensePayment, (payment) => payment.user)
   expense_payments: ExpensePayment[];

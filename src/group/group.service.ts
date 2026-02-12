@@ -9,15 +9,30 @@ import { Group } from './entity/group.entity';
 import { GroupMember } from './entity/group-member.entity';
 import { GroupRole } from './enums/group-role.enum';
 import { customAlphabet } from 'nanoid';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateGroupDto } from './dto/update-group.dto';
+import { Expense } from '../expense/entity/expense.entity';
+import { ExpenseShare } from '../expense/entity/expenseShare.entity';
+import { ExpensePayment } from '../expense/entity/expensePayment.entity';
+
+export interface GroupSummaryForUser {
+  group_name: string;
+  invitation_code: string;
+  total_members: number;
+  total_number_of_expenses: number;
+  /** Positive = user should get back; negative = user owes */
+  balance: number;
+}
 
 @Injectable()
 export class GroupService {
   constructor(
     @InjectRepository(Group) private readonly groupRepository: Repository<Group>,
     @InjectRepository(GroupMember) private readonly groupMemberRepository: Repository<GroupMember>,
+    @InjectRepository(Expense) private readonly expenseRepository: Repository<Expense>,
+    @InjectRepository(ExpenseShare) private readonly expenseShareRepository: Repository<ExpenseShare>,
+    @InjectRepository(ExpensePayment) private readonly expensePaymentRepository: Repository<ExpensePayment>,
   ) {}
 
   // Create a new group with the given name and associate the creating user as OWNER
@@ -52,17 +67,95 @@ export class GroupService {
     return { ...savedGroup, userRole: GroupRole.OWNER };
   }
 
-  // Retrieve all groups that a user belongs to (with their role)
-  async getGroupsForUser(userId: string): Promise<(Group & { userRole: GroupRole })[]> {
+  // Retrieve all groups that a user belongs to with summary (name, invite code, member count, expense count, user balance)
+  async getGroupsForUser(userId: string): Promise<GroupSummaryForUser[]> {
     const memberships = await this.groupMemberRepository.find({
       where: { user_id: userId },
       relations: ['group'],
     });
 
-    return memberships.map((m) => ({
-      ...m.group,
-      userRole: m.role,
-    }));
+    if (memberships.length === 0) {
+      return [];
+    }
+
+    const groupIds = memberships.map((m) => m.group.id);
+
+    const [memberCounts, expenseCounts, totalPaidByUser, totalShareByUser] = await Promise.all([
+      this.getMemberCountByGroup(groupIds),
+      this.getExpenseCountByGroup(groupIds),
+      this.getTotalPaidByUserPerGroup(userId, groupIds),
+      this.getTotalShareByUserPerGroup(userId, groupIds),
+    ]);
+
+    return memberships.map((m) => {
+      const groupId = m.group_id;
+      const paid = Number(totalPaidByUser[groupId] ?? 0);
+      const share = Number(totalShareByUser[groupId] ?? 0);
+      const balance = paid - share;
+      return {
+        group_id: groupId,
+        group_name: m.group.name,
+        invitation_code: m.group.invite_code,
+        total_members: memberCounts[groupId] ?? 0,
+        total_number_of_expenses: expenseCounts[groupId] ?? 0,
+        balance,
+      };
+    });
+  }
+
+  private async getMemberCountByGroup(groupIds: string[]): Promise<Record<string, number>> {
+    const rows = await this.groupMemberRepository
+      .createQueryBuilder('gm')
+      .select('gm.group_id', 'group_id')
+      .addSelect('COUNT(*)', 'count')
+      .where('gm.group_id IN (:...groupIds)', { groupIds })
+      .groupBy('gm.group_id')
+      .getRawMany<{ group_id: string; count: string }>();
+    return Object.fromEntries(rows.map((r) => [r.group_id, Number(r.count)]));
+  }
+
+  private async getExpenseCountByGroup(groupIds: string[]): Promise<Record<string, number>> {
+    const rows = await this.expenseRepository
+      .createQueryBuilder('e')
+      .select('e.group_id', 'group_id')
+      .addSelect('COUNT(*)', 'count')
+      .where('e.group_id IN (:...groupIds)', { groupIds })
+      .groupBy('e.group_id')
+      .getRawMany<{ group_id: string; count: string }>();
+    return Object.fromEntries(rows.map((r) => [r.group_id, Number(r.count)]));
+  }
+
+  private async getTotalPaidByUserPerGroup(
+    userId: string,
+    groupIds: string[],
+  ): Promise<Record<string, number>> {
+    const rows = await this.expensePaymentRepository
+      .createQueryBuilder('ep')
+      .innerJoin('ep.expense', 'e')
+      .select('e.group_id', 'group_id')
+      .addSelect('COALESCE(SUM(ep.amount_paid), 0)', 'total')
+      .where('e.group_id IN (:...groupIds)', { groupIds })
+      .andWhere('ep.user_id = :userId', { userId })
+      .groupBy('e.group_id')
+      .getRawMany<{ group_id: string; total: string }>();
+    return Object.fromEntries(rows.map((r) => [r.group_id, Number(r.total)]));
+  }
+
+  private async getTotalShareByUserPerGroup(
+    userId: string,
+    groupIds: string[],
+  ): Promise<Record<string, number>> {
+    const rows = await this.expenseShareRepository
+      .createQueryBuilder('es')
+      .innerJoin('es.expense', 'e')
+      .innerJoin('es.user', 'u')
+      .select('e.group_id', 'group_id')
+      .addSelect('COALESCE(SUM(es.share), 0)', 'total')
+      .where('e.group_id IN (:...groupIds)', { groupIds })
+      .andWhere('u.id = :userId', { userId })
+      .groupBy('e.group_id')
+      .getRawMany<{ group_id: string; total: string }>();
+    return Object.fromEntries(rows.map((r) => [r.group_id, Number(r.total)]));
   }
 
   // Update group details such as name
@@ -127,18 +220,49 @@ export class GroupService {
     return group;
   }
 
-  // Get a group with members
-  async getGroupWithMembers(groupId: string): Promise<Group & { members: GroupMember[] }> {
-    const group = await this.groupRepository.findOne({
-      where: { id: groupId },
-      relations: ['members', 'members.user'],
-    });
+  // Get group details and member avatars by groupId
+  async getGroupWithMembers(groupId: string): Promise<{
+    group_id: string;
+    group_name: string;
+    invite_code: string;
+    members: { user_id: string; avatar: string | null }[];
+  }> {
+   
+    const rawResults = await this.groupRepository
+      .createQueryBuilder('group')
+      .leftJoin('group.members', 'member')
+      .leftJoin('member.user', 'user')
+      .where('group.id = :groupId', { groupId })
+      .select([
+        'group.id',
+        'group.name',
+        'group.invite_code',
+        'member.user_id',
+        'user.avatar',
+      ])
+      .getRawMany();
 
-    if (!group) {
+    if (!rawResults || rawResults.length === 0) {
       throw new NotFoundException('Group not found');
     }
 
-    return group as Group & { members: GroupMember[] };
+    // Extract group info from first row
+    const { group_id, group_name, group_invite_code } = rawResults[0];
+
+    // Map members from raw results
+    const members = rawResults
+      .filter(row => row.member_user_id) 
+      .map(row => ({
+        user_id: row.member_user_id,
+        avatar: row.user_avatar,
+      }));
+
+    return {
+      group_id,
+      group_name,
+      invite_code: group_invite_code,
+      members,
+    };
   }
 
   // Get user's role in a group
@@ -170,12 +294,20 @@ export class GroupService {
       throw new BadRequestException('Cannot promote a member to owner');
     }
 
+    if(membership.role === newRole){
+      throw new BadRequestException('User already has this role');
+    }
+
     membership.role = newRole;
     return this.groupMemberRepository.save(membership);
   }
 
-  // Remove a member from the group
-  async removeMember(groupId: string, targetUserId: string): Promise<void> {
+  // Remove a member from the group. Only owner and admin can remove; only owner can remove an admin.
+  async removeMember(
+    groupId: string,
+    targetUserId: string,
+    callerRole: GroupRole,
+  ): Promise<void> {
     const membership = await this.groupMemberRepository.findOne({
       where: { user_id: targetUserId, group_id: groupId },
     });
@@ -186,6 +318,29 @@ export class GroupService {
 
     if (membership.role === GroupRole.OWNER) {
       throw new BadRequestException('Cannot remove the group owner');
+    }
+
+    if (membership.role === GroupRole.ADMIN && callerRole !== GroupRole.OWNER) {
+      throw new BadRequestException('Only the group owner can remove an admin');
+    }
+
+    await this.groupMemberRepository.remove(membership);
+  }
+
+  // Allow the current user to leave a group (owner cannot leave until they transfer ownership)
+  async leaveGroup(userId: string, groupId: string): Promise<void> {
+    const membership = await this.groupMemberRepository.findOne({
+      where: { user_id: userId, group_id: groupId },
+    });
+
+    if (!membership) {
+      throw new NotFoundException('You are not a member of this group');
+    }
+
+    if (membership.role === GroupRole.OWNER) {
+      throw new BadRequestException(
+        'Group owner cannot leave. Transfer ownership to another member first.',
+      );
     }
 
     await this.groupMemberRepository.remove(membership);

@@ -10,6 +10,7 @@ import { GlobalModule } from './global/global.module';
 import { HealthModule } from './health/health.module';
 import { GroupModule } from './group/group.module';
 import { ExpenseModule } from './expense/expense.module';
+import { SettlementModule } from './settlement/settlement.module';
 import { NotificationModule } from './notification/notification.module';
 
 @Module({
@@ -27,6 +28,7 @@ import { NotificationModule } from './notification/notification.module';
     HealthModule,
     GroupModule,
     ExpenseModule,
+    SettlementModule,
     NotificationModule,
   ],
 })

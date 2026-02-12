@@ -14,7 +14,6 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
-  // --- Static paths first (before :groupId) to avoid matching "user" or "join" as groupId ---
 
   @ApiBearerAuth()
   @Auth()

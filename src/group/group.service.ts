@@ -9,21 +9,15 @@ import { Group } from './entity/group.entity';
 import { GroupMember } from './entity/group-member.entity';
 import { GroupRole } from './enums/group-role.enum';
 import { customAlphabet } from 'nanoid';
-import { In, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { Expense } from '../expense/entity/expense.entity';
 import { ExpenseShare } from '../expense/entity/expenseShare.entity';
 import { ExpensePayment } from '../expense/entity/expensePayment.entity';
+import { GroupSummaryForUser } from './interface/group-summary-for-users.interface';
 
-export interface GroupSummaryForUser {
-  group_name: string;
-  invitation_code: string;
-  total_members: number;
-  total_number_of_expenses: number;
-  /** Positive = user should get back; negative = user owes */
-  balance: number;
-}
+
 
 @Injectable()
 export class GroupService {

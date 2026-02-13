@@ -6,6 +6,8 @@ import { Expense } from './entity/expense.entity';
 import { ExpensePayment } from './entity/expensePayment.entity';
 import { ExpenseShare } from './entity/expenseShare.entity';
 import { ExpenseCategory } from './entity/expenseCategory.entity';
+import { Group } from '../group/entity/group.entity';
+import { GroupMember } from '../group/entity/group-member.entity';
 
 @Module({
   imports: [
@@ -14,6 +16,8 @@ import { ExpenseCategory } from './entity/expenseCategory.entity';
       ExpensePayment,
       ExpenseShare,
       ExpenseCategory,
+      Group,
+      GroupMember,
     ]),
   ],
   controllers: [ExpenseController],

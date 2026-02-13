@@ -1,4 +1,4 @@
-import { IsNumber, IsString } from 'class-validator';
+import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class ErrorResponseDto {
   @IsNumber()
@@ -9,4 +9,10 @@ export class ErrorResponseDto {
 
   @IsString()
   timestamp: string;
+
+  /** Present when validation fails; lists each constraint violation (e.g. from ValidationPipe). */
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  errors?: string[];
 }

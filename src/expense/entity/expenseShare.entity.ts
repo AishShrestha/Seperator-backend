@@ -14,6 +14,9 @@ export class ExpenseShare {
   @Column({ type: 'uuid' })
   expense_id: string;
 
+  @Column({ type: 'uuid' })
+  user_id: string;
+
   @ManyToOne(() => User, (user) => user.expense_shares, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;

@@ -122,6 +122,18 @@ export class GroupController {
     };
   }
 
+  @Get(':groupId/balance')
+  @ApiBearerAuth()
+  @Auth()
+  async getGroupBalance(@Param('groupId') groupId: string, @Req() req: any) {
+    const userId = req?.user?.id;
+    const balance = await this.groupService.getGroupBalanceForUser(groupId, userId);
+    return {
+      message: 'Balance retrieved successfully',
+      data: balance,
+    };
+  }
+
   @ApiBearerAuth()
   @Auth()
   @Get(':groupId')

@@ -8,10 +8,18 @@ import { GroupRolesGuard } from './guards/group-roles.guard';
 import { Expense } from '../expense/entity/expense.entity';
 import { ExpenseShare } from '../expense/entity/expenseShare.entity';
 import { ExpensePayment } from '../expense/entity/expensePayment.entity';
+import { Settlement } from '../settlement/entity/settlement.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Group, GroupMember, Expense, ExpenseShare, ExpensePayment]),
+    TypeOrmModule.forFeature([
+      Group,
+      GroupMember,
+      Expense,
+      ExpenseShare,
+      ExpensePayment,
+      Settlement,
+    ]),
   ],
   controllers: [GroupController],
   providers: [GroupService, GroupRolesGuard],

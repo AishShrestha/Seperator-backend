@@ -14,15 +14,13 @@ import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
 export class GroupController {
   constructor(private readonly groupService: GroupService) {}
 
-
+  // --- Collection / no groupId (static paths first) ---
   @ApiBearerAuth()
   @Auth()
   @Post()
   async createGroup(@Body() createGroupDto: CreateGroupDto, @Req() req: any) {
     const userId = req?.user?.id;
-
     const result = await this.groupService.createGroup(createGroupDto, userId);
-
     return {
       message: 'Group created successfully',
       data: {
@@ -46,13 +44,12 @@ export class GroupController {
     };
   }
 
-  @Get('join/:inviteCode')
   @ApiBearerAuth()
   @Auth()
+  @Get('join/:inviteCode')
   async joinGroup(@Param('inviteCode') inviteCode: string, @Req() req: any) {
     const userId = req?.user?.id;
     const group = await this.groupService.joinGroup(inviteCode, userId);
-
     return {
       message: 'Joined group successfully',
       data: {
@@ -63,11 +60,46 @@ export class GroupController {
     };
   }
 
+  // --- Group-scoped (specific paths before GET :groupId) ---
+  @ApiBearerAuth()
+  @Auth()
+  @Get(':groupId/balance')
+  async getGroupBalance(@Param('groupId') groupId: string, @Req() req: any) {
+    const userId = req?.user?.id;
+    const balance = await this.groupService.getGroupBalanceForUser(groupId, userId);
+    return {
+      message: 'Balance retrieved successfully',
+      data: balance,
+    };
+  }
 
-  @Patch(':groupId/member/:userId/role')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, GroupRolesGuard)
+  @GroupRoles(GroupRole.OWNER, GroupRole.ADMIN)
+  @Patch(':groupId')
+  async updateGroup(@Param('groupId') groupId: string, @Body() body: UpdateGroupDto) {
+    const result = await this.groupService.updateGroup(groupId, body);
+    return {
+      message: 'Group updated successfully',
+      data: result,
+    };
+  }
+
+  @ApiBearerAuth()
+  @Auth()
+  @Post(':groupId/leave')
+  async leaveGroup(@Param('groupId') groupId: string, @Req() req: any) {
+    const userId = req?.user?.id;
+    await this.groupService.leaveGroup(userId, groupId);
+    return {
+      message: 'Left group successfully',
+    };
+  }
+
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, GroupRolesGuard)
   @GroupRoles(GroupRole.OWNER)
+  @Patch(':groupId/member/:userId/role')
   async updateMemberRole(
     @Param('groupId') groupId: string,
     @Param('userId') targetUserId: string,
@@ -83,10 +115,10 @@ export class GroupController {
     };
   }
 
-  @Delete(':groupId/member/:userId')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, GroupRolesGuard)
   @GroupRoles(GroupRole.OWNER, GroupRole.ADMIN)
+  @Delete(':groupId/member/:userId')
   async removeMember(
     @Param('groupId') groupId: string,
     @Param('userId') targetUserId: string,
@@ -99,41 +131,6 @@ export class GroupController {
     };
   }
 
-  @Post(':groupId/leave')
-  @ApiBearerAuth()
-  @Auth()
-  async leaveGroup(@Param('groupId') groupId: string, @Req() req: any) {
-    const userId = req?.user?.id;
-    await this.groupService.leaveGroup(userId, groupId);
-    return {
-      message: 'Left group successfully',
-    };
-  }
-
-  @Patch(':groupId')
-  @ApiBearerAuth()
-  @UseGuards(JwtAuthGuard, GroupRolesGuard)
-  @GroupRoles(GroupRole.OWNER, GroupRole.ADMIN)
-  async updateGroup(@Param('groupId') groupId: string, @Body() body: UpdateGroupDto) {
-    const result = await this.groupService.updateGroup(groupId, body);
-    return {
-      message: 'Group updated successfully',
-      data: result,
-    };
-  }
-
-  @Get(':groupId/balance')
-  @ApiBearerAuth()
-  @Auth()
-  async getGroupBalance(@Param('groupId') groupId: string, @Req() req: any) {
-    const userId = req?.user?.id;
-    const balance = await this.groupService.getGroupBalanceForUser(groupId, userId);
-    return {
-      message: 'Balance retrieved successfully',
-      data: balance,
-    };
-  }
-
   @ApiBearerAuth()
   @Auth()
   @Get(':groupId')
@@ -143,7 +140,6 @@ export class GroupController {
       this.groupService.getGroupWithMembers(groupId),
       this.groupService.getUserRoleInGroup(userId, groupId),
     ]);
-
     return {
       message: 'Group retrieved successfully',
       data: {

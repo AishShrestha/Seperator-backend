@@ -13,10 +13,17 @@ import {
 import { CreateUserDto } from './dto/create-user.dto';
 import { AuthService } from './services/auth/auth.service';
 import { LoginDto } from './dto/login.dto';
-import { RefreshTokenDto } from './dto/refresh-token.dto';
+import { ForgotPasswordDto } from './dto/forgot-password.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { UserService } from './services/user/user.service';
 import { JwtAuthGuard } from './guards/jwt-auth/jwt-auth.guard';
-import { ApiBearerAuth, ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiBody,
+  ApiCookieAuth,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { CacheInterceptor } from '@nestjs/cache-manager';
 import { Response, Request } from 'express';
 
@@ -48,8 +55,6 @@ export class UserController {
     return {
       message: 'User registered successfully',
       user: result.user,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
     };
   }
 
@@ -74,9 +79,21 @@ export class UserController {
     return {
       message: 'Login successful',
       user: result.user,
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken,
     };
+  }
+
+  @Post('forgot-password')
+  @ApiOperation({ summary: 'Request password reset email' })
+  @ApiBody({ type: ForgotPasswordDto })
+  async forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.authService.requestPasswordReset(dto.email);
+  }
+
+  @Post('reset-password')
+  @ApiOperation({ summary: 'Reset password with token from email' })
+  @ApiBody({ type: ResetPasswordDto })
+  async resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.authService.resetPassword(dto.token, dto.newPassword);
   }
 
   @Post('refresh')

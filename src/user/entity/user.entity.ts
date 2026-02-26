@@ -45,6 +45,22 @@ export class User {
   })
   refreshTokenExpiresAt: Date;
 
+  @Column({
+    name: 'password_reset_token',
+    type: 'varchar', 
+    nullable: true,
+    select: false,
+  })
+  passwordResetToken: string | null;
+  
+  @Column({
+    name: 'password_reset_token_expires_at',
+    type: 'timestamp',
+    nullable: true,
+    select: false,
+  })
+  passwordResetTokenExpiresAt: Date | null;
+
   @OneToMany(() => Expense, (expense) => expense.created_by_user)
   created_expenses: Expense[];
 

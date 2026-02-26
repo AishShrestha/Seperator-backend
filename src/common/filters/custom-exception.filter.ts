@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 import { ErrorResponseDto } from '../dto/error-response.dto';
-import { HttpExceptionFilter } from './http-exception.filter';
+
 
 @Catch(HttpException)
 export class CustomExceptionFilter implements ExceptionFilter {

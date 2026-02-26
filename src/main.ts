@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { json } from 'body-parser';
+import * as cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppLoggerService } from './logger/services/app-logger/app-logger.service';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
@@ -22,6 +23,7 @@ async function bootstrap() {
   // const appEnv = configService.get<AppEnv>('appEnv') || AppEnv.DEV;
 
   // app.useLogger(logger);
+  app.use(cookieParser());
   app.use(json({ limit: '1mb' }));
   app.use(
     helmet({
@@ -39,7 +41,7 @@ async function bootstrap() {
   );
 
   app.enableCors({
-    origin: 'http://localhost:5173', // Your frontend URL
+    origin: 'http://localhost:3000', // Your frontend URL
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
@@ -77,10 +79,10 @@ async function bootstrap() {
   });
   const logger = app.get(AppLoggerService);
   app.useLogger(logger);
-  const port = configService.get<number>('port') || 3000;
+  const port = configService.get<number>('port') || 3001;
   const host = '0.0.0.0';
 
-  await app.listen(port ?? 3000, host);
+  await app.listen(port ?? 3001, host);
   logger.log(`🚀 App started on http://localhost:${port}/api`);
 }
 

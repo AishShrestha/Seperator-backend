@@ -5,6 +5,7 @@ import { Repository } from 'typeorm';
 import { CreateUserDto } from '../../dto/create-user.dto';
 import { PasswordService } from '../password/password.service';
 import { JwtService } from '../jwt/jwt.service';
+import { UserRole } from '../../enums/user-role.enum';
 
 @Injectable()
 export class UserService {
@@ -20,14 +21,14 @@ export class UserService {
       where: {
         email: email.toLowerCase(),
       },
-      select: ['id', 'name', 'email', 'password'],
+      select: ['id', 'name', 'email', 'password', 'role'],
     });
   }
 
   async findByIdWithRefreshToken(id: string): Promise<User | null> {
     return this.usersRepository.findOne({
       where: { id },
-      select: ['id', 'name', 'email', 'refreshToken', 'refreshTokenExpiresAt'],
+      select: ['id', 'name', 'email', 'role', 'refreshToken', 'refreshTokenExpiresAt'],
     });
   }
 
@@ -38,6 +39,7 @@ export class UserService {
       email: userDto.email.toLowerCase(),
       name: userDto.name,
       password: await this.passwordService.generate(userDto.password),
+      role: UserRole.USER,
     };
 
     const newUser = this.usersRepository.create(userPayload);
@@ -57,6 +59,7 @@ export class UserService {
       id: user.id,
       email: user.email.toLowerCase(),
       name: user.name,
+      role: user.role ?? UserRole.USER,
     };
     console.log('payload', payload);
 
@@ -110,12 +113,13 @@ export class UserService {
       id: user.id,
       email: user.email.toLowerCase(),
       name: user.name,
+      role: user.role ?? UserRole.USER,
     });
   }
 
   public getAll(): Promise<User[]> {
     return this.usersRepository.find({
-      select: ['id', 'email', 'name'],
+      select: ['id', 'email', 'name', 'role'],
     });
   }
   async findById(id: string): Promise<User | null> {

@@ -37,5 +37,10 @@ export const getConfig = (): AppConfig => {
         },
       },
     },
+    stripe: {
+      secretKey: process.env.STRIPE_SECRET_KEY,
+      currency: process.env.STRIPE_CURRENCY || 'usd',
+      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
+    },
   };
 };

@@ -25,6 +25,9 @@
     "migrations:generate": "node ./src/db/migrations/generate-migration.js",
     "migrations:up": "yarn run typeorm migration:run -- -d ./type-orm.config.ts",
     "migrations:revert": "npm run typeorm migration:revert -- -d ./type-orm.config.ts",
+    "seed": "ts-node -r tsconfig-paths/register src/db/run-seed.ts",
+    "seed:plans": "ts-node -r tsconfig-paths/register src/db/run-seed.ts",
+    "seed:admin": "ts-node -r tsconfig-paths/register src/db/run-seed-admin.ts",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -62,6 +65,7 @@
     "rimraf": "^5.0.5",
     "rxjs": "^7.8.0",
     "socket.io": "^4.8.1",
+    "stripe": "^20.4.0",
     "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {

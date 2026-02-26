@@ -4,6 +4,7 @@ import { ExpensePayment } from '../../expense/entity/expensePayment.entity';
 import { ExpenseShare } from '../../expense/entity/expenseShare.entity';
 import { Notification } from '../../notification/entity/notification.entity';
 import { GroupMember } from '../../group/entity/group-member.entity';
+import { UserRole } from '../enums/user-role.enum';
 
 @Entity({
   name: 'users',
@@ -17,6 +18,14 @@ export class User {
 
   @Column()
   email: string;
+
+  @Column({
+    name: 'role',
+    type: 'varchar',
+    length: 20,
+    default: UserRole.USER,
+  })
+  role: UserRole;
 
   @Column({
     name: 'password',

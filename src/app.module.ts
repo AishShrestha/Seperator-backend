@@ -12,6 +12,9 @@ import { GroupModule } from './group/group.module';
 import { ExpenseModule } from './expense/expense.module';
 import { SettlementModule } from './settlement/settlement.module';
 import { NotificationModule } from './notification/notification.module';
+import { PlanModule } from './plan/plan.module';
+import { StripeModule } from './stripe/stripe.module';
+import { SyncModule } from './sync/sync.module';
 
 @Module({
   imports: [
@@ -30,6 +33,9 @@ import { NotificationModule } from './notification/notification.module';
     ExpenseModule,
     SettlementModule,
     NotificationModule,
+    PlanModule,
+    StripeModule,
+    SyncModule,
   ],
 })
 export class AppModule {

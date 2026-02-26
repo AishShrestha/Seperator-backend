@@ -7,6 +7,7 @@ export interface AppConfig {
   database: DbConfig;
   cache: CacheConfig;
   mail: MailConfig;
+  stripe: StripeConfig;
   frontendUrl: string;
 }
 
@@ -40,4 +41,10 @@ export interface MailConfig {
       pass: string;
     };
   };
+}
+
+export interface StripeConfig {
+  secretKey: string | undefined;
+  currency: string;
+  webhookSecret: string | undefined;
 }

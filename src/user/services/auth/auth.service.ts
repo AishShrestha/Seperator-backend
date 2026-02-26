@@ -43,6 +43,7 @@ export class AuthService {
         id: result.user.id,
         name: result.user.name,
         email: result.user.email,
+        role: result.user.role,
       },
       accessToken: result.accessToken,
       refreshToken: result.refreshToken
@@ -75,6 +76,7 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        role: user.role,
       },
       accessToken: tokens.accessToken,
       refreshToken: tokens.refreshToken,

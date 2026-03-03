@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, EntityManager, Repository } from 'typeorm';
+import { DataSource, EntityManager, MoreThanOrEqual, Repository } from 'typeorm';
 import { Expense } from './entity/expense.entity';
 import { ExpensePayment } from './entity/expensePayment.entity';
 import { ExpenseShare } from './entity/expenseShare.entity';
@@ -22,6 +22,8 @@ import {
   PaginatedExpenseList,
   SplitBetweenItem,
 } from './interfaces/expense-list-item.interface';
+import { PlanLimitService } from '../plan-limit/plan-limit.service';
+import { PlanLimitAction } from '../plan-limit/enums/plan-limit-action.enum';
 
 const AMOUNT_TOLERANCE = 0.01;
 
@@ -52,10 +54,16 @@ export class ExpenseService {
     @InjectRepository(ExpenseCategory)
     private readonly expenseCategoryRepository: Repository<ExpenseCategory>,
     private readonly dataSource: DataSource,
+    private readonly planLimitService: PlanLimitService,
   ) {}
 
   async createExpense(dto: CreateExpenseDto, createdByUserId: string): Promise<Expense> {
     try {
+      await this.planLimitService.assertWithinLimits(
+        createdByUserId,
+        PlanLimitAction.CREATE_EXPENSE,
+      );
+
       const memberUserIds = await this.assertGroupAccessAndGetMemberIds(
         dto.group_id,
         createdByUserId,
@@ -157,6 +165,7 @@ export class ExpenseService {
   /**
    * Returns paginated expenses for a group in the format expected by the client.
    * Only group members can list expenses.
+   * Applies history_days limit from user's plan (e.g. Free plan: last 30 days).
    */
   async getExpensesByGroupId(
     groupId: string,
@@ -166,10 +175,18 @@ export class ExpenseService {
   ): Promise<PaginatedExpenseList> {
     await this.assertGroupAccessAndGetMemberIds(groupId, userId);
 
+    const historyDays = await this.planLimitService.getHistoryDaysLimit(userId);
+    const where: Record<string, unknown> = { group_id: groupId };
+    if (historyDays != null && historyDays > 0) {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - historyDays);
+      where.created_at = MoreThanOrEqual(cutoff);
+    }
+
     const skip = (page - 1) * limit;
 
     const [expenses, total] = await this.expenseRepository.findAndCount({
-      where: { group_id: groupId },
+      where,
       relations: ['payments', 'payments.user', 'shares', 'shares.user', 'category'],
       order: { created_at: 'DESC' },
       skip,

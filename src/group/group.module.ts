@@ -9,6 +9,7 @@ import { Expense } from '../expense/entity/expense.entity';
 import { ExpenseShare } from '../expense/entity/expenseShare.entity';
 import { ExpensePayment } from '../expense/entity/expensePayment.entity';
 import { Settlement } from '../settlement/entity/settlement.entity';
+import { PlanLimitModule } from '../plan-limit/plan-limit.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { Settlement } from '../settlement/entity/settlement.entity';
       ExpensePayment,
       Settlement,
     ]),
+    PlanLimitModule,
   ],
   controllers: [GroupController],
   providers: [GroupService, GroupRolesGuard],

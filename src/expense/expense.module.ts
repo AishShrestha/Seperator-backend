@@ -8,6 +8,7 @@ import { ExpenseShare } from './entity/expenseShare.entity';
 import { ExpenseCategory } from './entity/expenseCategory.entity';
 import { Group } from '../group/entity/group.entity';
 import { GroupMember } from '../group/entity/group-member.entity';
+import { PlanLimitModule } from '../plan-limit/plan-limit.module';
 
 @Module({
   imports: [
@@ -19,6 +20,7 @@ import { GroupMember } from '../group/entity/group-member.entity';
       Group,
       GroupMember,
     ]),
+    PlanLimitModule,
   ],
   controllers: [ExpenseController],
   providers: [ExpenseService],

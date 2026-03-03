@@ -27,6 +27,16 @@ export class HttpExceptionFilter implements ExceptionFilter {
       errorResponse.errors = errors;
     }
 
+    const responseBody = exception.getResponse();
+    if (typeof responseBody === 'object' && responseBody !== null) {
+      const body = responseBody as Record<string, unknown>;
+      if (body.code === 'PLAN_LIMIT_REACHED') {
+        errorResponse.code = body.code as string;
+        errorResponse.upgrade_required = body.upgrade_required as boolean;
+        errorResponse.current_plan = body.current_plan as string;
+      }
+    }
+
     res.status(status).json(errorResponse);
   }
 

@@ -9,6 +9,9 @@ import { GroupRole } from './enums/group-role.enum';
 import { GroupRolesGuard } from './guards/group-roles.guard';
 import { JwtAuthGuard } from 'src/user/guards/jwt-auth/jwt-auth.guard';
 import { UpdateMemberRoleDto } from './dto/update-member-role.dto';
+import { PlanLimitGuard } from '../plan-limit/guards/plan-limit.guard';
+import { PlanLimit } from '../plan-limit/decorators/plan-limit.decorator';
+import { PlanLimitAction } from '../plan-limit/enums/plan-limit-action.enum';
 
 @Controller('group')
 export class GroupController {
@@ -16,7 +19,8 @@ export class GroupController {
 
   // --- Collection / no groupId (static paths first) ---
   @ApiBearerAuth()
-  @Auth()
+  @UseGuards(JwtAuthGuard, PlanLimitGuard)
+  @PlanLimit(PlanLimitAction.CREATE_GROUP)
   @Post()
   async createGroup(@Body() createGroupDto: CreateGroupDto, @Req() req: any) {
     const userId = req?.user?.id;
@@ -45,7 +49,8 @@ export class GroupController {
   }
 
   @ApiBearerAuth()
-  @Auth()
+  @UseGuards(JwtAuthGuard, PlanLimitGuard)
+  @PlanLimit(PlanLimitAction.ADD_GROUP_MEMBER)
   @Get('join/:inviteCode')
   async joinGroup(@Param('inviteCode') inviteCode: string, @Req() req: any) {
     const userId = req?.user?.id;

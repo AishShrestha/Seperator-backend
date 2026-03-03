@@ -22,6 +22,8 @@ import {
   BalanceOweItem,
   GroupBalanceForUser,
 } from './interface/group-balance.interface';
+import { PlanLimitService } from '../plan-limit/plan-limit.service';
+import { PlanLimitAction } from '../plan-limit/enums/plan-limit-action.enum';
 
 
 
@@ -36,6 +38,7 @@ export class GroupService {
     @InjectRepository(ExpenseShare) private readonly expenseShareRepository: Repository<ExpenseShare>,
     @InjectRepository(ExpensePayment) private readonly expensePaymentRepository: Repository<ExpensePayment>,
     @InjectRepository(Settlement) private readonly settlementRepository: Repository<Settlement>,
+    private readonly planLimitService: PlanLimitService,
   ) {}
 
   // Create a new group with the given name and associate the creating user as OWNER
@@ -46,6 +49,11 @@ export class GroupService {
       if (!userId) {
         throw new BadRequestException('User ID is required to create a group');
       }
+
+      await this.planLimitService.assertWithinLimits(
+        userId,
+        PlanLimitAction.CREATE_GROUP,
+      );
 
       const newGroup = this.groupRepository.create({
         name,
@@ -195,6 +203,12 @@ export class GroupService {
       if (!group) {
         throw new BadRequestException('Invalid invite code');
       }
+
+      await this.planLimitService.assertWithinLimits(
+        userId,
+        PlanLimitAction.ADD_GROUP_MEMBER,
+        { groupId: group.id },
+      );
 
       const existingMembership = await this.groupMemberRepository.findOne({
         where: { user_id: userId, group_id: group.id },

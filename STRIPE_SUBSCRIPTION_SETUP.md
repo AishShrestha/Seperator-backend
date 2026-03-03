@@ -38,6 +38,10 @@ yarn seed:plans
 |--------|----------|------|-------------|
 | GET | /api/plan | Public | List all plans |
 | POST | /api/sync/plans | JWT + Admin | Sync config → DB → Stripe |
+| POST | /api/subscription | JWT | Create subscription |
+| GET | /api/subscription/current | JWT | Get current subscription |
+| PATCH | /api/subscription/plan | JWT | Upgrade/downgrade plan |
+| PATCH | /api/subscription/cancel | JWT | Cancel subscription |
 
 ## Sync Flow
 

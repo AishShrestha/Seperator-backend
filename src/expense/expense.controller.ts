@@ -9,13 +9,18 @@ import {
   Query,
   Req,
   UnauthorizedException,
+  UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { Auth } from '../common/decorator/auth.decorator';
+import { JwtAuthGuard } from '../user/guards/jwt-auth/jwt-auth.guard';
 import { ExpenseService } from './expense.service';
 import { CreateExpenseDto } from './dto/create-expense.dto';
 import { ExpensePaginationQueryDto } from './dto/expense-pagination-query.dto';
 import { UpdateExpenseDto } from './dto/update-expense.dto';
+import { PlanLimitGuard } from '../plan-limit/guards/plan-limit.guard';
+import { PlanLimit } from '../plan-limit/decorators/plan-limit.decorator';
+import { PlanLimitAction } from '../plan-limit/enums/plan-limit-action.enum';
 
 @Controller('expense')
 export class ExpenseController {
@@ -23,7 +28,8 @@ export class ExpenseController {
 
   @Post()
   @ApiBearerAuth()
-  @Auth()
+  @UseGuards(JwtAuthGuard, PlanLimitGuard)
+  @PlanLimit(PlanLimitAction.CREATE_EXPENSE)
   async createExpense(
     @Body() dto: CreateExpenseDto,
     @Req() req: { user?: { id: string } },

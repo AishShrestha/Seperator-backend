@@ -1,4 +1,4 @@
-import { IsArray, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsArray, IsBoolean, IsNumber, IsOptional, IsString } from 'class-validator';
 
 export class ErrorResponseDto {
   @IsNumber()
@@ -15,4 +15,17 @@ export class ErrorResponseDto {
   @IsArray()
   @IsString({ each: true })
   errors?: string[];
+
+  /** Present when PLAN_LIMIT_REACHED; for upgrade prompts. */
+  @IsOptional()
+  @IsString()
+  code?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  upgrade_required?: boolean;
+
+  @IsOptional()
+  @IsString()
+  current_plan?: string;
 }

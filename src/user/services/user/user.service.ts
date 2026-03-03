@@ -54,6 +54,26 @@ export class UserService {
     };
   }
 
+  /**
+   * Creates user record for registration flow. Used inside transaction.
+   * Does NOT generate tokens.
+   */
+  async createUserForRegistration(params: {
+    email: string;
+    name: string;
+    password: string;
+    stripeCustomerId: string | null;
+  }): Promise<User> {
+    const newUser = this.usersRepository.create({
+      email: params.email,
+      name: params.name,
+      password: params.password,
+      role: UserRole.USER,
+      stripeCustomerId: params.stripeCustomerId,
+    });
+    return this.usersRepository.save(newUser);
+  }
+
   async generateTokensForUser(user: User): Promise<{ accessToken: string; refreshToken: string }> {
     const payload = {
       id: user.id,
@@ -64,11 +84,13 @@ export class UserService {
     console.log('payload', payload);
 
     const accessToken = this.jwtService.signAccessToken(payload);
+    console.log('accessToken:', accessToken);
     const refreshToken = this.jwtService.signRefreshToken({ id: user.id });
+    console.log('refreshToken:', refreshToken);
 
     // Store refresh token in database
     await this.storeRefreshToken(user.id, refreshToken);
-
+    console.log('refreshToken stored in database');
     return { accessToken, refreshToken };
   }
 
@@ -84,9 +106,9 @@ export class UserService {
 
   async removeRefreshToken(userId: string): Promise<void> {
     await this.usersRepository.update(userId, {
-      refreshToken: undefined,
-      refreshTokenExpiresAt: undefined,
-    });
+      refreshToken: null,
+      refreshTokenExpiresAt: null,
+    } as Record<string, unknown>);
   }
 
   async validateRefreshToken(userId: string, refreshToken: string): Promise<boolean> {
@@ -156,5 +178,12 @@ export class UserService {
       passwordResetToken: null,
       passwordResetTokenExpiresAt: null,
     });
+  }
+
+  async updateStripeCustomerId(
+    userId: string,
+    stripeCustomerId: string,
+  ): Promise<void> {
+    await this.usersRepository.update(userId, { stripeCustomerId });
   }
 }

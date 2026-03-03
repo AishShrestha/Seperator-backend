@@ -20,12 +20,12 @@ export async function seedPlans(dataSource: DataSource): Promise<void> {
         name: config.name,
         slug: config.slug,
         description: config.description,
-        stripePlanId: config.stripe_plan_id,
+        stripeProductId: config.stripe_plan_id,
         stripePriceId: config.stripe_price_id,
         planConfiguration: config.configuration,
       })
       .orUpdate(
-        ['name', 'description', 'plan_configuration', 'stripe_plan_id', 'stripe_price_id', 'updated_at'],
+        ['name', 'description', 'plan_configuration', 'stripe_product_id', 'stripe_price_id', 'updated_at'],
         ['slug'],
       )
       .execute();

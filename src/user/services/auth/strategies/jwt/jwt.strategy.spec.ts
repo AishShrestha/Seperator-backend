@@ -26,6 +26,7 @@ describe('JWT Strategy', () => {
   });
 
   it('should return payload on validate', async () => {
-    expect(await strategy.validate('payload')).toBe('payload');
+    const payload = { id: 'user-id', email: 'test@example.com' };
+    expect(await strategy.validate(payload)).toBe(payload);
   });
 });

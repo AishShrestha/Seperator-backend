@@ -38,7 +38,6 @@ export class StripeService {
   /** Initializes Stripe client from config if STRIPE_SECRET_KEY is set */
   constructor(private readonly configService: ConfigService) {
     const stripeConfig = this.configService.get<StripeConfig>('stripe');
-    console.log("stripe configuration",stripeConfig)
     const secretKey = stripeConfig?.secretKey;
     if (secretKey) {
       this.stripe = new Stripe(secretKey, { apiVersion: '2026-02-25.clover' });
@@ -202,5 +201,181 @@ export class StripeService {
   /** Returns true if Stripe client is initialized (STRIPE_SECRET_KEY set) */
   isConfigured(): boolean {
     return this.stripe !== null;
+  }
+
+  /**
+   * Creates or retrieves Stripe customer. Idempotent by idempotencyKey.
+   * @param idempotencyKey Optional - for retry-safe registration
+   */
+  async createCustomer(params: {
+    email: string;
+    name: string;
+    existingCustomerId?: string | null;
+    metadata?: Record<string, string>;
+    idempotencyKey?: string;
+  }): Promise<string> {
+    this.assertStripeConfigured();
+    if (params.existingCustomerId) {
+      await this.stripe!.customers.retrieve(params.existingCustomerId);
+      return params.existingCustomerId;
+    }
+    const options = params.idempotencyKey
+      ? { idempotencyKey: params.idempotencyKey }
+      : undefined;
+    const customer = await this.stripe!.customers.create(
+      {
+        email: params.email.toLowerCase(),
+        name: params.name,
+        metadata: params.metadata ?? {},
+      },
+      options,
+    );
+    this.logger.log(`Created Stripe customer: ${customer.id}`);
+    return customer.id;
+  }
+
+  /**
+   * Creates a subscription. For $0 plans, payment_method is optional.
+   * All plans (including free) create a Stripe subscription.
+   * @param idempotencyKey Optional - for retry-safe registration
+   */
+  async createSubscription(params: {
+    customerId: string;
+    priceId: string;
+    paymentMethodId?: string | null;
+    trialDays?: number;
+    metadata?: Record<string, string>;
+    idempotencyKey?: string;
+  }): Promise<Stripe.Subscription> {
+    this.assertStripeConfigured();
+    const subscriptionParams: Stripe.SubscriptionCreateParams = {
+      customer: params.customerId,
+      items: [{ price: params.priceId }],
+      metadata: params.metadata ?? {},
+      expand: ['latest_invoice'],
+    };
+    if (params.paymentMethodId) {
+      subscriptionParams.default_payment_method = params.paymentMethodId;
+    }
+    if (params.trialDays && params.trialDays > 0) {
+      subscriptionParams.trial_period_days = params.trialDays;
+    }
+    const options = params.idempotencyKey
+      ? { idempotencyKey: params.idempotencyKey }
+      : undefined;
+    const subscription = await this.stripe!.subscriptions.create(
+      subscriptionParams,
+      options,
+    );
+    this.logger.log(`Created Stripe subscription: ${subscription.id}`);
+    return subscription;
+  }
+
+  /**
+   * Updates subscription to a new price (upgrade/downgrade).
+   */
+  async updateSubscription(
+    subscriptionId: string,
+    newPriceId: string,
+  ): Promise<Stripe.Subscription> {
+    this.assertStripeConfigured();
+    const subscription = await this.stripe!.subscriptions.retrieve(subscriptionId);
+    const subscriptionItemId = subscription.items.data[0]?.id;
+    if (!subscriptionItemId) {
+      throw new Error('Subscription has no items');
+    }
+    const updated = await this.stripe!.subscriptions.update(subscriptionId, {
+      items: [
+        { id: subscriptionItemId, price: newPriceId },
+      ],
+      proration_behavior: 'create_prorations',
+    });
+    this.logger.log(`Updated Stripe subscription ${subscriptionId} to price ${newPriceId}`);
+    return updated;
+  }
+
+  /**
+   * Cancels subscription. Immediately or at period end.
+   */
+  async cancelSubscription(
+    subscriptionId: string,
+    atPeriodEnd: boolean,
+  ): Promise<Stripe.Subscription> {
+    this.assertStripeConfigured();
+    if (atPeriodEnd) {
+      const updated = await this.stripe!.subscriptions.update(subscriptionId, {
+        cancel_at_period_end: true,
+      });
+      this.logger.log(`Scheduled cancellation for subscription ${subscriptionId}`);
+      return updated;
+    }
+    const canceled = await this.stripe!.subscriptions.cancel(subscriptionId);
+    this.logger.log(`Canceled Stripe subscription: ${subscriptionId}`);
+    return canceled;
+  }
+
+  /** Retrieves subscription from Stripe */
+  async retrieveSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    this.assertStripeConfigured();
+    return this.stripe!.subscriptions.retrieve(subscriptionId);
+  }
+
+  /**
+   * Retrieves the latest open invoice for a customer (e.g. failed invoice from trial end).
+   * Returns null if no open invoices exist.
+   */
+  async getLatestOpenInvoice(customerId: string): Promise<Stripe.Invoice | null> {
+    this.assertStripeConfigured();
+    const { data } = await this.stripe!.invoices.list({
+      customer: customerId,
+      status: 'open',
+      limit: 1,
+    });
+    return data[0] ?? null;
+  }
+
+  /**
+   * Manually pays an open invoice.
+   * Use paymentMethodId to explicitly charge a specific payment method (e.g. newly attached via SetupIntent).
+   * If omitted, Stripe uses the customer's default payment method.
+   * @throws StripeErrors.InvalidRequestError if invoice is not open or already paid
+   */
+  async payInvoice(
+    invoiceId: string,
+    paymentMethodId?: string,
+  ): Promise<Stripe.Invoice> {
+    this.assertStripeConfigured();
+    const params: Stripe.InvoicePayParams = {};
+    if (paymentMethodId) {
+      params.payment_method = paymentMethodId;
+    }
+    const invoice = await this.stripe!.invoices.pay(invoiceId, params);
+    this.logger.log(`Paid invoice ${invoiceId}`);
+    return invoice;
+  }
+
+  /**
+   * Attaches a payment method to a Stripe customer and sets it as default for future invoices.
+   * Frontend creates PaymentMethod via Stripe Elements; backend attaches it to the customer.
+   */
+  async attachPaymentMethodToCustomer(
+    customerId: string,
+    paymentMethodId: string,
+  ): Promise<void> {
+    this.assertStripeConfigured();
+
+    await this.stripe!.paymentMethods.attach(paymentMethodId, {
+      customer: customerId,
+    });
+
+    await this.stripe!.customers.update(customerId, {
+      invoice_settings: {
+        default_payment_method: paymentMethodId,
+      },
+    });
+
+    this.logger.log(
+      `Attached payment method ${paymentMethodId} to customer ${customerId} and set as default`,
+    );
   }
 }

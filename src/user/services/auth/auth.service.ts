@@ -1,7 +1,5 @@
 import {
   BadRequestException,
-  HttpException,
-  HttpStatus,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -14,6 +12,7 @@ import { User } from '../../entity/user.entity';
 import { JwtService } from '../jwt/jwt.service';
 import { PasswordService } from '../password/password.service';
 import { MailService } from '../../../global/services/mail/mail.service';
+import { RegistrationService } from '../registration/registration.service';
 
 @Injectable()
 export class AuthService {
@@ -22,32 +21,19 @@ export class AuthService {
     private readonly jwtService: JwtService,
     private readonly passwordService: PasswordService,
     private readonly mailService: MailService,
+    private readonly registrationService: RegistrationService,
   ) {}
 
+  /**
+   * Registers user with subscription. Delegates to RegistrationService for
+   * atomic Stripe + DB flow (customer, subscription, user, subscription record).
+   */
   async register(userDto: CreateUserDto): Promise<{
     user: Partial<User>;
     accessToken: string;
     refreshToken: string;
   }> {
-    // Check if user already exists
-    const userExists = await this.userService.isUserExists(userDto.email);
-    if (userExists) {
-      throw new HttpException('User already exists', HttpStatus.BAD_REQUEST);
-    }
-
-    // Create new user
-    const result = await this.userService.createUser(userDto);
-
-    return {
-      user: {
-        id: result.user.id,
-        name: result.user.name,
-        email: result.user.email,
-        role: result.user.role,
-      },
-      accessToken: result.accessToken,
-      refreshToken: result.refreshToken
-    };
+    return this.registrationService.registerWithSubscription(userDto);
   }
 
   async login(loginRequest: LoginDto): Promise<{ 

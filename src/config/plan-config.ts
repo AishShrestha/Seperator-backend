@@ -60,8 +60,8 @@ export function getPlanConfigs(): PlanConfigItem[] {
         billing: {
           price: 0,
           currency,
-          billing_cycle: 'monthly', // $0/month for Stripe; no charge, enables upgrade tracking
-          is_free: true,
+          billing_cycle: 'monthly',
+          is_trial_enabled: false,
         },
       },
     },

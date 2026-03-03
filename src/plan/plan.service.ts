@@ -75,7 +75,7 @@ export class PlanService {
       name: config.name,
       description: config.description,
       planConfiguration: config.configuration as PlanConfiguration,
-      stripePlanId: config.stripe_plan_id,
+      stripeProductId: config.stripe_plan_id,
       stripePriceId: config.stripe_price_id,
     };
 
@@ -110,11 +110,18 @@ export class PlanService {
     }
 
     const updateData: Partial<Plan> = {};
-    if (productId != null) updateData.stripePlanId = productId;
+    if (productId != null) updateData.stripeProductId = productId;
     if (priceId != null) updateData.stripePriceId = priceId;
 
     await this.planRepository.update({ id: plan.id }, updateData);
     return this.planRepository.findOneOrFail({ where: { slug } });
+  }
+
+  /**
+   * Find plan by id.
+   */
+  async findById(id: string): Promise<Plan | null> {
+    return this.planRepository.findOne({ where: { id } });
   }
 
   /**
@@ -147,7 +154,7 @@ export class PlanService {
       const plan = planMap.get(config.slug);
       return {
         ...config,
-        stripe_plan_id: plan?.stripePlanId ?? config.stripe_plan_id,
+        stripe_plan_id: plan?.stripeProductId ?? config.stripe_plan_id,
         stripe_price_id: plan?.stripePriceId ?? config.stripe_price_id,
       };
     });

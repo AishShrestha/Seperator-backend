@@ -1,4 +1,5 @@
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common';
 import { json } from 'body-parser';
@@ -14,8 +15,9 @@ import { ValidationExceptionFilter } from './common/filters/validation-exception
 // import { AppEnv } from './services/app-config/configTypes';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, {
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
     bufferLogs: true,
+    rawBody: true, // Required for Stripe webhook signature verification
   });
 
   const configService = app.get(ConfigService);
@@ -24,7 +26,14 @@ async function bootstrap() {
 
   // app.useLogger(logger);
   app.use(cookieParser());
-  app.use(json({ limit: '1mb' }));
+  app.use(
+    json({
+      limit: '1mb',
+      verify: (req: any, _res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
   app.use(
     helmet({
       contentSecurityPolicy: {

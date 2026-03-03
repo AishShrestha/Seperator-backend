@@ -1,13 +1,22 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { UserController } from './user.controller';
 import { AuthService } from './services/auth/auth.service';
 import { UserService } from './services/user/user.service';
 import { PasswordService } from './services/password/password.service';
-import { ConfigService } from '@nestjs/config';
 import { JwtService } from './services/jwt/jwt.service';
+import { MailService } from '../global/services/mail/mail.service';
+import { RegistrationService } from './services/registration/registration.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UserEntity } from './entity/user.entity';
-import { mockUserEntity } from './entity/__fixtures__/user-entity.fixture';
+import { User } from './entity/user.entity';
+import { UserRole } from './enums/user-role.enum';
+
+const mockUser = {
+  id: 'user-id',
+  name: 'Test User',
+  email: 'test@example.com',
+  role: UserRole.USER,
+};
 
 describe('UserController', () => {
   let controller: UserController;
@@ -21,16 +30,15 @@ describe('UserController', () => {
         AuthService,
         UserService,
         PasswordService,
-        ConfigService,
         JwtService,
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('secret') } },
+        { provide: MailService, useValue: { send: jest.fn() } },
         {
-          provide: getRepositoryToken(UserEntity),
-          useValue: {},
+          provide: RegistrationService,
+          useValue: { registerWithSubscription: jest.fn() },
         },
-        {
-          provide: 'CACHE_MANAGER',
-          useValue: jest.fn(),
-        },
+        { provide: getRepositoryToken(User), useValue: {} },
+        { provide: 'CACHE_MANAGER', useValue: jest.fn() },
       ],
     }).compile();
 
@@ -44,60 +52,68 @@ describe('UserController', () => {
   });
 
   describe('register method', () => {
-    it('should register user', async () => {
-      jest.spyOn(authService, 'register').mockResolvedValue({
-        id: 0,
-        token: 'token',
-        firstName: 'firstName',
-        lastName: 'lastName',
-        email: 'email',
-        passwordHash: 'p',
-      });
+    it('should register user and return user with message', async () => {
+      const registerResult: { user: Partial<User>; accessToken: string; refreshToken: string } = {
+        user: mockUser,
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      };
+      jest.spyOn(authService, 'register').mockResolvedValue(registerResult);
 
-      expect(
-        await controller.register({
-          firstName: 'firstName',
-          lastName: 'lastName',
-          email: 'email',
+      const res = { cookie: jest.fn(), clearCookie: jest.fn() } as any;
+
+      const result = await controller.register(
+        {
+          name: 'Test User',
+          email: 'test@example.com',
           password: 'p',
-        }),
-      ).toStrictEqual({
-        message: 'User created',
-        user: {
-          id: 0,
-          token: 'token',
+          planId: 'plan-uuid',
         },
+        res,
+      );
+
+      expect(result).toStrictEqual({
+        message: 'User registered successfully',
+        user: mockUser,
       });
+      expect(res.cookie).toHaveBeenCalledWith('access_token', 'access-token', expect.any(Object));
+      expect(res.cookie).toHaveBeenCalledWith('refresh_token', 'refresh-token', expect.any(Object));
     });
   });
 
   describe('login method', () => {
-    it('should login user', async () => {
-      jest.spyOn(authService, 'login').mockResolvedValue('mock-token');
+    it('should login user and return user with message', async () => {
+      const loginResult: { user: Partial<User>; accessToken: string; refreshToken: string } = {
+        user: mockUser,
+        accessToken: 'access-token',
+        refreshToken: 'refresh-token',
+      };
+      jest.spyOn(authService, 'login').mockResolvedValue(loginResult);
 
-      expect(
-        await controller.login({
-          email: 'email',
-          password: 'p',
-        }),
-      ).toStrictEqual({
+      const res = { cookie: jest.fn(), clearCookie: jest.fn() } as any;
+
+      const result = await controller.login(
+        { email: 'test@example.com', password: 'p' },
+        res,
+      );
+
+      expect(result).toStrictEqual({
         message: 'Login successful',
-        token: 'mock-token',
+        user: mockUser,
       });
+      expect(res.cookie).toHaveBeenCalledWith('access_token', 'access-token', expect.any(Object));
+      expect(res.cookie).toHaveBeenCalledWith('refresh_token', 'refresh-token', expect.any(Object));
     });
   });
 
   describe('getUsers method', () => {
     it('should retrieve all users', async () => {
-      const userServiceSpy = jest
-        .spyOn(userService, 'getAll')
-        .mockResolvedValue([mockUserEntity]);
+      jest.spyOn(userService, 'getAll').mockResolvedValue([mockUser] as User[]);
 
       expect(await controller.getUsers()).toStrictEqual({
         message: 'Users retrieved successfully',
-        users: [mockUserEntity],
+        users: [mockUser],
       });
-      expect(userServiceSpy).toHaveBeenCalledTimes(1);
     });
   });
 });

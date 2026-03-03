@@ -1,10 +1,12 @@
 import { Entity, Column, PrimaryGeneratedColumn, OneToMany } from 'typeorm';
 import { Expense } from '../../expense/entity/expense.entity';
+import { Subscription } from '../../subscription/entity/subscription.entity';
 import { ExpensePayment } from '../../expense/entity/expensePayment.entity';
 import { ExpenseShare } from '../../expense/entity/expenseShare.entity';
 import { Notification } from '../../notification/entity/notification.entity';
 import { GroupMember } from '../../group/entity/group-member.entity';
 import { UserRole } from '../enums/user-role.enum';
+import { UserStatus } from '../enums/user-status.enum';
 
 @Entity({
   name: 'users',
@@ -70,6 +72,22 @@ export class User {
   })
   passwordResetTokenExpiresAt: Date | null;
 
+  @Column({
+    name: 'status',
+    type: 'varchar',
+    length: 20,
+    default: UserStatus.ACTIVE,
+  })
+  status: UserStatus;
+
+  @Column({
+    name: 'stripe_customer_id',
+    type: 'varchar',
+    length: 255,
+    nullable: true,
+  })
+  stripeCustomerId: string | null;
+
   @OneToMany(() => Expense, (expense) => expense.created_by_user)
   created_expenses: Expense[];
 
@@ -84,4 +102,7 @@ export class User {
 
   @OneToMany(() => Notification, (notification) => notification.user)
   notifications: Notification[];
+
+  @OneToMany(() => Subscription, (subscription) => subscription.user)
+  subscriptions: Subscription[];
 }

@@ -15,6 +15,7 @@ import { NotificationModule } from './notification/notification.module';
 import { PlanModule } from './plan/plan.module';
 import { StripeModule } from './stripe/stripe.module';
 import { SyncModule } from './sync/sync.module';
+import { SubscriptionModule } from './subscription/subscription.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { SyncModule } from './sync/sync.module';
     PlanModule,
     StripeModule,
     SyncModule,
+    SubscriptionModule,
   ],
 })
 export class AppModule {

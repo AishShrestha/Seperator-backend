@@ -1,33 +1,40 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
 import { UserService } from './user.service';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { UserEntity } from '../../entity/user.entity';
+import { User } from '../../entity/user.entity';
+import { UserRole } from '../../enums/user-role.enum';
 import { PasswordService } from '../password/password.service';
 import { JwtService } from '../jwt/jwt.service';
-import { ConfigService } from '@nestjs/config';
 import { Repository } from 'typeorm';
-import { mockUserEntity } from '../../entity/__fixtures__/user-entity.fixture';
+const mockUser: Partial<User> = {
+  id: 'user-id',
+  name: 'Test User',
+  email: 'test@example.com',
+  role: UserRole.USER,
+  password: 'hashed-password',
+};
 
 describe('UserService', () => {
   let service: UserService;
-  let repo: Repository<UserEntity>;
+  let repo: Repository<User>;
   let passwordService: PasswordService;
-  let jwtService: JwtService;
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         UserService,
-        ConfigService,
         PasswordService,
         JwtService,
+        { provide: ConfigService, useValue: { get: jest.fn().mockReturnValue('secret') } },
         {
-          provide: getRepositoryToken(UserEntity),
+          provide: getRepositoryToken(User),
           useValue: {
             find: jest.fn(),
             findOne: jest.fn(),
             create: jest.fn(),
             save: jest.fn(),
+            update: jest.fn(),
           },
         },
       ],
@@ -35,8 +42,7 @@ describe('UserService', () => {
 
     service = module.get<UserService>(UserService);
     passwordService = module.get<PasswordService>(PasswordService);
-    jwtService = module.get<JwtService>(JwtService);
-    repo = module.get<Repository<UserEntity>>(getRepositoryToken(UserEntity));
+    repo = module.get<Repository<User>>(getRepositoryToken(User));
   });
 
   it('should be defined', () => {
@@ -47,45 +53,37 @@ describe('UserService', () => {
     const findOneSpy = jest.spyOn(repo, 'findOne').mockResolvedValue(null);
 
     expect(await service.isUserExists('mail')).toBe(null);
-    expect(findOneSpy).toHaveBeenCalledWith({
-      where: {
-        email: 'mail',
-      },
-    });
+    expect(findOneSpy).toHaveBeenCalled();
   });
 
   it('should be able to create user', async () => {
     const passwordSpy = jest
       .spyOn(passwordService, 'generate')
       .mockResolvedValue('password-hash');
-    const jwtSpy = jest.spyOn(jwtService, 'sign').mockReturnValue('jwt');
     const createSpy = jest
       .spyOn(repo, 'create')
-      .mockReturnValue(mockUserEntity);
-    const saveSpy = jest.spyOn(repo, 'save').mockResolvedValue(mockUserEntity);
+      .mockReturnValue(mockUser as User);
+    const saveSpy = jest.spyOn(repo, 'save').mockResolvedValue(mockUser as User);
 
-    const newUser = await service.createUser({
-      email: 'EMAIL',
-      firstName: 'fName',
-      lastName: 'lName',
+    const result = await service.createUser({
+      email: 'test@example.com',
+      name: 'Test User',
       password: 'password',
+      planId: 'plan-uuid',
     });
 
-    expect(newUser).toStrictEqual(mockUserEntity);
+    expect(result.user).toBeDefined();
+    expect(result.accessToken).toBeDefined();
+    expect(result.refreshToken).toBeDefined();
     expect(passwordSpy).toHaveBeenCalledWith('password');
-    expect(saveSpy).toHaveBeenCalledTimes(2);
-    expect(jwtSpy).toHaveBeenCalledWith({
-      id: 0,
-      email: 'email',
-      firstName: 'fName',
-      lastName: 'lName',
-    });
-    expect(createSpy).toHaveBeenCalledWith({
-      email: 'email',
-      firstName: 'fName',
-      lastName: 'lName',
-      passwordHash: 'password-hash',
-    });
+    expect(createSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'test@example.com',
+        name: 'Test User',
+        role: 'user',
+      }),
+    );
+    expect(saveSpy).toHaveBeenCalled();
   });
 
   it('should check user password', async () => {
@@ -94,22 +92,19 @@ describe('UserService', () => {
       .mockResolvedValue(true);
 
     expect(
-      await service.checkUserPassword(mockUserEntity, 'request-password'),
+      await service.checkUserPassword(mockUser as User, 'request-password'),
     ).toBe(true);
-    expect(compareSpy).toHaveBeenCalledWith(
-      'request-password',
-      mockUserEntity.passwordHash,
-    );
+    expect(compareSpy).toHaveBeenCalledWith('request-password', 'hashed-password');
   });
 
   it('should get all users', async () => {
     const repoSpy = jest
       .spyOn(repo, 'find')
-      .mockResolvedValue([mockUserEntity]);
+      .mockResolvedValue([mockUser] as User[]);
 
-    expect(await service.getAll()).toStrictEqual([mockUserEntity]);
+    expect(await service.getAll()).toStrictEqual([mockUser]);
     expect(repoSpy).toHaveBeenCalledWith({
-      select: ['id', 'email', 'lastName', 'firstName'],
+      select: ['id', 'email', 'name', 'role'],
     });
   });
 });

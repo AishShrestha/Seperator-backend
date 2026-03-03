@@ -23,8 +23,8 @@ export class Plan {
   @Column({ name: 'description', type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ name: 'stripe_plan_id', type: 'varchar', length: 255, nullable: true })
-  stripePlanId: string | null;
+  @Column({ name: 'stripe_product_id', type: 'varchar', length: 255, nullable: true })
+  stripeProductId: string | null;
 
   @Column({ name: 'stripe_price_id', type: 'varchar', length: 255, nullable: true })
   stripePriceId: string | null;

@@ -10,7 +10,7 @@ import { Group } from './entity/group.entity';
 import { GroupMember } from './entity/group-member.entity';
 import { GroupRole } from './enums/group-role.enum';
 import { customAlphabet } from 'nanoid';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { UpdateGroupDto } from './dto/update-group.dto';
 import { Expense } from '../expense/entity/expense.entity';
@@ -22,6 +22,7 @@ import {
   BalanceOweItem,
   GroupBalanceForUser,
 } from './interface/group-balance.interface';
+import { GroupMemberItem } from './interface/group-member-item.interface';
 import { PlanLimitService } from '../plan-limit/plan-limit.service';
 import { PlanLimitAction } from '../plan-limit/enums/plan-limit-action.enum';
 
@@ -94,18 +95,28 @@ export class GroupService {
 
       const groupIds = memberships.map((m) => m.group.id);
 
-      const [memberCounts, expenseCounts, totalPaidByUser, totalShareByUser] = await Promise.all([
+      const [
+        memberCounts,
+        expenseCounts,
+        totalPaidByUser,
+        totalShareByUser,
+        settlementAdjustments,
+      ] = await Promise.all([
         this.getMemberCountByGroup(groupIds),
         this.getExpenseCountByGroup(groupIds),
         this.getTotalPaidByUserPerGroup(userId, groupIds),
         this.getTotalShareByUserPerGroup(userId, groupIds),
+        this.getSettlementBalanceAdjustmentByGroup(userId, groupIds),
       ]);
+
+      const round = (n: number) => Math.round(n * 100) / 100;
 
       return memberships.map((m) => {
         const groupId = m.group_id;
         const paid = Number(totalPaidByUser[groupId] ?? 0);
         const share = Number(totalShareByUser[groupId] ?? 0);
-        const balance = paid - share;
+        const settlementAdjustment = settlementAdjustments[groupId] ?? 0;
+        const balance = round(paid - share + settlementAdjustment);
         return {
           group_id: groupId,
           group_name: m.group.name,
@@ -173,6 +184,36 @@ export class GroupService {
       .groupBy('e.group_id')
       .getRawMany<{ group_id: string; total: string }>();
     return Object.fromEntries(rows.map((r) => [r.group_id, Number(r.total)]));
+  }
+
+  /**
+   * Returns the net settlement adjustment per group for a user.
+   * When user is payer: +amount (reduces debt). When user is payee: -amount (reduces what they're owed).
+   * Result: balance_adjustment = sum(amt where payer) - sum(amt where payee)
+   */
+  private async getSettlementBalanceAdjustmentByGroup(
+    userId: string,
+    groupIds: string[],
+  ): Promise<Record<string, number>> {
+    if (groupIds.length === 0) return {};
+
+    const settlements = await this.settlementRepository.find({
+      where: { group_id: In(groupIds) },
+      select: ['group_id', 'payer_id', 'payee_id', 'amount'],
+    });
+
+    const adjustment: Record<string, number> = {};
+
+    for (const s of settlements) {
+      const groupId = s.group_id;
+      if (!adjustment[groupId]) adjustment[groupId] = 0;
+
+      const amt = Number(s.amount);
+      if (s.payer_id === userId) adjustment[groupId] += amt;
+      if (s.payee_id === userId) adjustment[groupId] -= amt;
+    }
+
+    return adjustment;
   }
 
   // Update group details such as name
@@ -250,6 +291,39 @@ export class GroupService {
       return group;
     } catch (error) {
       this.handleGroupError(error, 'retrieving group');
+    }
+  }
+
+  /**
+   * Returns all members of a group. Only group members can access.
+   */
+  async getMembersByGroupId(
+    groupId: string,
+    userId: string,
+  ): Promise<GroupMemberItem[]> {
+    try {
+      const membership = await this.groupMemberRepository.findOne({
+        where: { user_id: userId, group_id: groupId },
+      });
+      if (!membership) {
+        throw new NotFoundException('You are not a member of this group');
+      }
+
+      const members = await this.groupMemberRepository.find({
+        where: { group_id: groupId },
+        relations: ['user'],
+        order: { joined_at: 'ASC' },
+      });
+
+      return members.map((m) => ({
+        user_id: m.user_id,
+        user_name: m.user?.name ?? '',
+        avatar: m.user?.avatar ?? null,
+        role: m.role,
+        joined_at: m.joined_at.toISOString(),
+      }));
+    } catch (error) {
+      this.handleGroupError(error, 'retrieving group members');
     }
   }
 

@@ -79,6 +79,18 @@ export class GroupController {
   }
 
   @ApiBearerAuth()
+  @Auth()
+  @Get(':groupId/members')
+  async getGroupMembers(@Param('groupId') groupId: string, @Req() req: any) {
+    const userId = req?.user?.id;
+    const members = await this.groupService.getMembersByGroupId(groupId, userId);
+    return {
+      message: 'Members retrieved successfully',
+      data: members,
+    };
+  }
+
+  @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, GroupRolesGuard)
   @GroupRoles(GroupRole.OWNER, GroupRole.ADMIN)
   @Patch(':groupId')
